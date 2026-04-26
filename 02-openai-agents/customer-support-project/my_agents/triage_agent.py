@@ -10,10 +10,10 @@ from agents import (
 from agents.extensions.handoff_prompt import RECOMMENDED_PROMPT_PREFIX
 from agents.extensions import handoff_filters
 from models import UserAccountContext, InputGuardRailOutput, HandoffData
-# from my_agents.account_agent import account_agent
-# from my_agents.technical_agent import technical_agent
-# from my_agents.order_agent import order_agent
-# from my_agents.billing_agent import billing_agent
+
+from my_agents.menu_agent import menu_agent
+from my_agents.order_agent import order_agent
+from my_agents.reservation_agent import reservation_agent
 from my_agents.complaints_agent import complaints_agent
 
 
@@ -57,90 +57,66 @@ async def off_topic_guardrail(
 
 def dynamic_triage_agent_instructions(wrapper, agent):
     return f"""
-    You are a restaurant assistant.
+    You are a restaurant triage assistant.
 
     The customer's name is {wrapper.context.name}.
 
-    Your job:
-    - Help with menu, reservations, orders
-    - Detect complaints
+    Your main job is to route the user to the correct specialist agent.
 
-    If the user complains:
-    - Route to Complaints Agent
+    Route based on the user's request:
 
-    Complaint examples:
-    - "food was bad"
-    - "staff was rude"
-    - "I'm not satisfied"
-    - "I want a refund"
+    1. Menu Agent
+    - menu questions
+    - food recommendations
+    - ingredients, drinks, vegetarian/vegan/allergy options
 
-    If it's not a complaint:
-    - Answer normally as a restaurant assistant
+    2. Order Agent
+    - placing food orders
+    - takeout or delivery
+    - changing or checking an order
 
-    Always be polite.
+    3. Reservation Agent
+    - booking a table
+    - changing a reservation
+    - party size, date, and time
+
+    4. Complaints Agent
+    - bad food
+    - rude staff
+    - refund requests
+    - dissatisfaction or serious restaurant issues
+
+    If the user asks a restaurant-related question, route them to the best specialist.
+    If the request is unclear, ask one short clarifying question.
+
+    Always be polite and professional.
     """
 
-# def dynamic_triage_agent_instructions(
-#     wrapper: RunContextWrapper[UserAccountContext],
-#     agent: Agent[UserAccountContext],
-# ):
+
+# def dynamic_triage_agent_instructions(wrapper, agent):
 #     return f"""
-#     SPEAK TO THE USER IN ENGLISH
-    
-#     {RECOMMENDED_PROMPT_PREFIX}
+#     You are a restaurant assistant.
 
-#     You are a customer support agent. You ONLY help customers with their questions about their User Account, Billing, Orders, or Technical Support.
-#     You call customers by their name.
-    
 #     The customer's name is {wrapper.context.name}.
-#     The customer's email is {wrapper.context.email}.
-#     The customer's tier is {wrapper.context.tier}.
-    
-#     YOUR MAIN JOB: Classify the customer's issue and route them to the right specialist.
-    
-#     ISSUE CLASSIFICATION GUIDE:
-    
-#     🔧 TECHNICAL SUPPORT - Route here for:
-#     - Product not working, errors, bugs
-#     - App crashes, loading issues, performance problems
-#     - Feature questions, how-to help
-#     - Integration or setup problems
-#     - "The app won't load", "Getting error message", "How do I..."
-    
-#     💰 BILLING SUPPORT - Route here for:
-#     - Payment issues, failed charges, refunds
-#     - Subscription questions, plan changes, cancellations
-#     - Invoice problems, billing disputes
-#     - Credit card updates, payment method changes
-#     - "I was charged twice", "Cancel my subscription", "Need a refund"
-    
-#     📦 ORDER MANAGEMENT - Route here for:
-#     - Order status, shipping, delivery questions
-#     - Returns, exchanges, missing items
-#     - Tracking numbers, delivery problems
-#     - Product availability, reorders
-#     - "Where's my order?", "Want to return this", "Wrong item shipped"
-    
-#     👤 ACCOUNT MANAGEMENT - Route here for:
-#     - Login problems, password resets, account access
-#     - Profile updates, email changes, account settings
-#     - Account security, two-factor authentication
-#     - Account deletion, data export requests
-#     - "Can't log in", "Forgot password", "Change my email"
-    
-#     CLASSIFICATION PROCESS:
-#     1. Listen to the customer's issue
-#     2. Ask clarifying questions if the category isn't clear
-#     3. Classify into ONE of the four categories above
-#     4. Explain why you're routing them: "I'll connect you with our [category] specialist who can help with [specific issue]"
-#     5. Route to the appropriate specialist agent
-    
-#     SPECIAL HANDLING:
-#     - Premium/Enterprise customers: Mention their priority status when routing
-#     - Multiple issues: Handle the most urgent first, note others for follow-up
-#     - Unclear issues: Ask 1-2 clarifying questions before routing
-#     """
 
+#     Your job:
+#     - Help with menu, reservations, orders
+#     - Detect complaints
+
+#     If the user complains:
+#     - Route to Complaints Agent
+
+#     Complaint examples:
+#     - "food was bad"
+#     - "staff was rude"
+#     - "I'm not satisfied"
+#     - "I want a refund"
+
+#     If it's not a complaint:
+#     - Answer normally as a restaurant assistant
+
+#     Always be polite.
+#     """
 
 def handle_handoff(
     wrapper: RunContextWrapper[UserAccountContext],
@@ -180,13 +156,10 @@ triage_agent = Agent(
     #         tool_description="Use this when the user needs tech support."
     #     )
     # ]
-    # handoffs=[
-    #     make_handoff(technical_agent),
-    #     make_handoff(billing_agent),
-    #     make_handoff(account_agent),
-    #     make_handoff(order_agent),
-    # ],
     handoffs=[
+    make_handoff(menu_agent),
+    make_handoff(order_agent),
+    make_handoff(reservation_agent),
     make_handoff(complaints_agent),
     ],
 )
